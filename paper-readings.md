@@ -141,28 +141,100 @@ VBVR 的设计——用"预测派"的视频生成作为载体，但测试"理解
 
 ## Paper 2｜Is Sora a World Simulator?
 **A Comprehensive Survey on General World Models and Beyond**  
-arXiv: [2405.03520](https://arxiv.org/abs/2405.03520) | May 2024
+arXiv: [2405.03520](https://arxiv.org/abs/2405.03520) | May 2024  
+作者：Zheng Zhu et al.（GigaAI + 中科院 + NUS 等）
 
-### 核心主张
-> *"General world models represent a crucial pathway toward achieving AGI... Recently, Sora model has attained significant attention due to its remarkable simulation capabilities, which exhibits an **incipient comprehension of physical laws**"*
+---
 
-这篇是 Sora 发布后第一篇综合 survey，核心问题是：Sora 是否真的是世界模拟器？答案是：**有潜力，但还远没到**。
+### 这篇论文在说什么（一句话）
+Sora 发布后第一篇综合 survey，正式拷问：Sora 算不算真正的世界模拟器？答案是：**视觉令人印象深刻，但在因果推理、物理合规、泛化三个核心维度上根本不够格**。
 
-### 方法/框架
-从五个维度评估 Sora 和类 Sora 模型是否具备 world simulator 能力：
-1. 物理法则遵守
-2. 长时程一致性
-3. 可控性与交互性
-4. 泛化到 OOD 场景
-5. 对下游任务的支持
+---
 
-### 关键发现
-- Sora 展示了"初步的物理法则理解"（incipient comprehension），但在复杂物理场景中仍频繁出错
-- 长时程一致性是最大短板（超过几秒场景就开始漂移）
-- 当时没有任何 benchmark 能系统评测这些能力
+### 论文结构
+```
+2. Video Generation as General WM（技术综述 + Sora 分析）
+   2.3 Towards World Models: Sora（框架/数据/能力）
+3. WM for Autonomous Driving
+4. WM for Autonomous Agents
+5. Discussion ★ 最重要
+   5.1.1 Challenges（因果推理/物理/泛化/效率/评测）
+   5.1.2 Future Perspectives（3D WM / 具身智能）
+```
 
-### 🔑 我们的 Insight
-这篇 2024 年 5 月的论文指出"没有好的 benchmark"，而 VBVR 正是在 2025 年填补了这个空白。但它指出的五个维度中，VBVR-1.0 只覆盖了部分（可控性、部分物理），**长时程一致性、OOD 泛化、因果推理**仍未覆盖。这为 VBVR-2.0 提供了明确的路线图。
+---
+
+### Sora 技术解析（§2.3）
+
+架构三部分：VAE 压缩 → DiT 扩散（latent space）→ 语言编码器注入指令。  
+论文关键判断：Sora 本质是**条件视频生成器**，不是推理世界规律的模型。
+
+---
+
+### 核心挑战（§5.1.1）——直接原文
+
+> *"**Video generation is not synonymous with world models.** While video generation may serve as one manifestation of world models, it does not fully address the core challenges inherent to world models."*
+
+**挑战 1：因果推理（最关键）**
+> *"The model should be capable of inferring outcomes of decisions **never encountered before**... We expect world models to possess the ability of **counterfactual reasoning**, whereby outcomes are inferred through rational imagining."*
+
+引用 Pearl 三层智能层级（Figure 7）：  
+- 第一层：关联（seeing）→ 当前所有视频生成模型  
+- 第二层：干预（doing）→ action-conditional WM  
+- 第三层：**反事实（imagining）→ 真正的 world model 应达到此层**
+
+**挑战 2：物理法则**
+> *"Realism, seen in Sora's videos, **isn't the same as reality**... Training Sora with just video-text pairs isn't enough to grasp these complexities. Combining Sora with **physics-driven simulators** could be beneficial."*
+
+**挑战 3：泛化**
+> *"This requires the model to move beyond simply **memorizing the training data** and instead develop a robust understanding of the **underlying principles**."*
+
+**挑战 4：评测体系（对 VBVR 最直接）**
+> *"Generation metrics alone **cannot reflect the predictive rationality of world models**. This highlights the need for **human-centric evaluation**, which measures whether the generated videos meet users' expectations or align with human reasoning."*
+
+---
+
+### 未来方向（§5.1.2）
+
+| 方向 | 描述 |
+|------|------|
+| 3D World Simulator | "The world exists fundamentally in three dimensions" |
+| Embodied Intelligence | World model 作为 simulator 训练具身 agent 决策 |
+
+---
+
+### 关键发现总结
+
+| 维度 | Sora 表现 | 论文结论 |
+|------|----------|---------|
+| 视觉真实性 | ✅ 优秀 | 不等于 world model 能力 |
+| 因果/反事实推理 | ❌ 停留第一层关联 | 反事实是核心缺失 |
+| 物理法则 | ❌ 流体/热力学失败 | 需结合物理仿真器 |
+| 泛化 | ❌ case-based | 需 rule-based 理解 |
+| 评测体系 | ❌ 2024年空白 | 需 human-centric 评测 |
+
+---
+
+### 🔑 我们的 Insight（精读后）
+
+**Insight 1：VBVR 正好填了"评测体系"这个 2024 年明确的空白**  
+挑战 4 说 generation metrics 无法反映 predictive rationality——这正是 VBVR 出现的原因。VBVR 做到了 human-centric、程序化、有精确 GT。
+
+**Insight 2：Pearl 三层框架是 VBVR-2.0 最好的定位叙事**  
+- 第一层（关联）= 当前视频生成模型，VBVR-1.0 已在测
+- 第三层（反事实）= VBVR-2.0 的核心目标  
+在 VBVR-2.0 paper 里直接用这个框架，清晰、有权威性。
+
+**Insight 3：物理仿真器 + 生成模型结合，正是 VBVR 的数据引擎思路**  
+论文建议把 Sora 和物理仿真器结合。VBVR 的程序化引擎是这个思路的 benchmark 实现：用仿真提供 GT，用生成模型接受评测。
+
+**Insight 4："视频生成 ≠ 世界模型"是最强的 motivation 句**  
+直接可引用进 VBVR-2.0 的 introduction。
+
+**Insight 5：两篇 Survey（Paper 1 + Paper 2）共同指向同一核心**  
+Paper 1（清华）："case-based vs rule-based" = scaling 不解决物理推理  
+Paper 2（GigaAI）："memorizing training data" vs "underlying principles" = 因果/泛化是核心挑战  
+→ 社区共识已形成，VBVR-2.0 站在这个共识上出发。
 
 ---
 
