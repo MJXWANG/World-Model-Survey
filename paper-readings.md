@@ -14,25 +14,128 @@
 
 ## Paper 1｜Understanding World or Predicting Future?
 **A Comprehensive Survey of World Models**  
-arXiv: [2411.14499](https://arxiv.org/abs/2411.14499) | Nov 2024
+arXiv: [2411.14499](https://arxiv.org/abs/2411.14499) | Nov 2024  
+作者：Jingtao Ding et al.（清华大学 BNRist）| 发表于 ACM CSUR
 
-### 核心主张
-这篇 survey 提出 world model 领域存在一个根本性的**哲学分裂**：
+---
 
-> *"world models are regarded as tools for either **understanding the present** or **predicting the future**"*
+### 这篇论文在说什么（一句话）
+World model 领域存在根本性哲学分裂：一派在"理解现在"，另一派在"预测未来"，两个社区用同一个词做两件不同的事——这篇是第一个把两派系统统一梳理的 survey。
 
-一派认为 world model = 理解当前世界状态（感知派，偏 VLM/LLM）；另一派认为 world model = 预测未来状态（生成派，偏 video diffusion）。两个社区用同一个词，说的是两件不同的事。
+---
 
-### 方法/框架
-提供了一个统一的文献综述框架，把 world model 按"理解 vs 预测"两个维度分类整理，覆盖 LLM、视频生成、RL、具身AI 等多个子领域。
+### 论文结构
+```
+1. Introduction
+2. Background & Categorization（历史脉络 + 两派分类）
+3. Implicit Representation（理解派：model-based RL、LLM 知识）
+4. Future Prediction（预测派：视频生成、具身环境）
+5. Application Domains（游戏、具身AI、自动驾驶、社会模拟）
+6. Open Problems（物理规律与反事实、Benchmark、安全性等）
+7. Conclusion
+```
+
+---
+
+### 核心主张与论证
+
+#### 主张 1：两派分裂的起源
+> *"The definition of a world model remains a subject of ongoing debate, generally divided into two primary perspectives: **understanding the world** and **predicting the future**."*
+
+- **理解派起源**（1960s→2018）：Minsky 的 frame representation → Ha & Schmidhuber 2018 的 recurrent world model（RWM）→ model-based RL。核心是把外部世界抽象成内部隐式表征，建立"mental model"
+- **预测派起源**（LeCun 2022→Sora 2024）：LeCun 的 JEPA 路线——world model 不仅要理解，还要能"想象未来可能的状态"，服务于决策规划
+
+#### 主张 2：Sora 是"预测派"的代表，但有根本局限
+> *"A key limitation is its **causal reasoning ability**, restricting it to passively generating sequences without actively predicting how actions might alter events. Furthermore, Sora struggles to consistently reproduce correct physical laws, failing to accurately simulate complex physics like object behavior under forces, fluid dynamics, or light interactions."*
+
+论文对 Sora 的评价是：视觉上令人印象深刻，但**本质上是条件生成，不是因果理解**。
+
+#### 主张 3：World Model 的两种功能角色（§5.5，非常重要）
+论文把 world model 分成两类部署形态：
+
+| 形态 | 描述 | 代表 |
+|------|------|------|
+| **Cloud-based**（云端环境） | 大规模视频生成，作为数据引擎/RL环境/策略评估器 | Sora、WAN、CogVideoX |
+| **Edge-side**（边端智能体大脑） | 不生成像素，在 latent space 中规划行动 | V-JEPA 2、DreamerV3 |
+
+> *"Cloud-based world models can act as **data engines**, augmenting real-world data for training policy models... Edge-side world models can compress world states within a **latent space**; V-JEPA 2 trains a latent space world model that enables on-device action planning."*
+
+---
 
 ### 关键发现
-- "理解派"的 world model 关注：因果推理、状态表示、物理知识
-- "预测派"的 world model 关注：视频连贯性、未来帧预测、动作条件生成
-- **两者之间的桥梁几乎不存在**：很少有工作同时做到"理解当前"和"预测未来"
 
-### 🔑 我们的 Insight
-VBVR-1.0 是"预测派"的评测工具（测模型能否生成正确的下一帧/视频）。但 VBVR-2.0 应该**跨越这条鸿沟**：用视频生成作为载体，但测试的是"理解派"的能力（因果推理、反事实推理）。这正是 VBVR 区别于其他纯生成质量 benchmark 的机会。
+#### 发现 1：Scaling 不能自动产生物理推理能力
+> *"Kang et al. show that scaling diffusion video models yields **perfect in-distribution fidelity** yet **breaks down on out-of-distribution or combinatorial tests**, indicating 'case-based' rather than rule-based generalization."*
+
+即：大模型"记住了"训练分布里的物理现象，但没有学到可泛化的物理规则。在 OOD 场景（没见过的组合）中直接崩溃。
+
+#### 发现 2：反事实推理是最核心的开放问题（§6.1）
+这是论文最重要的部分：
+
+> *"A key objective of world models is to capture the **causal structure of their environments** – especially the underlying physical rules – so they can **reason about counterfactuals beyond the data distribution** (Pearl, 2009). This capacity is crucial for handling rare, mission-critical events (e.g., autonomous-driving corner cases) and for narrowing sim-to-real gaps."*
+
+论文援引 Pearl 的因果推理框架，指出反事实能力对真正的 world model 是**必须条件**，而非加分项。
+
+当前状态：
+- 纯数据驱动的方法（Sora 类）：有重力/流体/热力学等方面的**系统性失败**
+- 混合方法（嵌入物理先验）：PhysGen（刚体仿真+扩散精修）、physics-informed diffusion（PDE 残差损失）正在兴起
+- 结论：**"data-driven scaling alone is insufficient to recover robust physical laws"**
+
+#### 发现 3：Benchmark 空白已被社区认识到（§6.3 表8）
+论文列举了一批新的 benchmark，很多是我们之前没见过的：
+
+| 新 Benchmark | 重点 |
+|-------------|------|
+| **T2VPhysBench** | 文本转视频的 12 条物理定律合规性检测 |
+| **VBench-2.0** | 加入物理合理性和常识作为标准维度 |
+| **PhysBench** | 10K 视频-图像-文本三元组，测 VLM 的物理属性/关系/动力学 |
+| **Physics-IQ** | 五个物理领域（固体/流体/光学/热力/磁力），测视觉真实 vs 物理正确的 gap |
+| **UrbanVideo-Bench** | 城市自中心视频，包含**因果推理**维度 |
+| **EAI** | 具身 AI 的模块级评测（目标/子目标/动作/转移） |
+
+---
+
+### 方法论框架（对我们整理 survey 有用）
+
+论文把所有 world model 工作按 **2 个主轴 × 多应用域** 组织：
+
+```
+主轴 1：理解派（Implicit Representation）
+  ├── Model-based RL（Dreamer 系列、TD-MPC）
+  └── LLM 世界知识（全局物理知识、局部物理知识、社会知识）
+
+主轴 2：预测派（Future Prediction）
+  ├── 视频生成 world model（Sora、VideoGPT 等）
+  └── 具身环境 world model（室内/室外/动态）
+
+应用域：游戏 / 具身AI / 自动驾驶 / 社会模拟
+```
+
+---
+
+### 🔑 我们的 Insight（精读后更新）
+
+**Insight 1：VBVR 天然跨越两派鸿沟**  
+VBVR 的设计——用"预测派"的视频生成作为载体，但测试"理解派"的推理能力——正好落在两派的交叉点。这是 VBVR 最独特的定位，这篇论文的框架可以直接作为 VBVR motivation 的理论基础。
+
+**Insight 2：反事实是 §6.1 的第一个开放问题，Pearl 2009 作为理论锚点**  
+论文引用 Judea Pearl 的因果推理理论（《The Book of Why》的学术版），把反事实推理定位为 world model 的**必须条件**。VBVR-2.0 的反事实推理方向有这个理论基础背书。
+
+**Insight 3：我们发现了之前没见过的 benchmark：T2VPhysBench、Physics-IQ、PhysBench**  
+这三个需要加入我们的 benchmark 分析表：
+- **Physics-IQ**：五个物理领域的系统性测试，可能是 WorldModelBench 的强竞品
+- **T2VPhysBench**：12 条物理定律的 checklist，比 WorldModelBench 更系统
+- **VBench-2.0**：VBench 加了物理和常识维度——这是主流 benchmark 的重要升级
+
+**Insight 4："case-based vs rule-based" 是 VBVR-2.0 的核心叙事**  
+> *"'case-based' rather than rule-based generalization"*
+
+这个表述极好。VBVR-2.0 的使命可以描述为：**区分"case-based"模型（记住训练样本）和"rule-based"模型（学到可泛化规则）**。反事实推理和因果推理任务天然就是这种区分的测试手段。
+
+**Insight 5：需要补充 3 篇新 benchmark 到我们的分析表**  
+- T2VPhysBench（12条物理定律）
+- Physics-IQ（5个物理领域）  
+- PhysBench（VLM物理推理，10K条）
 
 ---
 
