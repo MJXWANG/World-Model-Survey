@@ -349,27 +349,93 @@ VBVR 用 I2V 框架（first frame → video → answer），而 I2V 系统性弱
 
 ## Paper 4｜WorldSimBench
 **Towards Video Generation Models as World Simulators**  
-arXiv: [2410.18072](https://arxiv.org/abs/2410.18072) | Oct 2024
+arXiv: [2410.18072](https://arxiv.org/abs/2410.18072) | Oct 2024  
+作者：Yiran Qin et al.（中国科大 + 上海 AI Lab + 港大）
 
-### 核心主张
-> *"the lack of **categorization based on inherent characteristics** continues to hinder the progress of predictive model development"*
+---
 
-WorldSimBench 的核心贡献不是新的评测指标，而是提出了一套**分类框架**——把视频预测模型按照"内在特性"分类后再分别评测。
+### 这篇论文在说什么（一句话）
+第一个把所有"预测模型"按照**具身程度**分成四层（S0-S3）的分类框架，并为最高层（World Simulators / S3）提出了双评测体系——视觉感知 + 动作一致性，覆盖三大具身场景。
 
-### 方法设计
-提出模型分类维度：
-- 开放式 vs 封闭式世界假设
-- 像素空间 vs 潜在空间
-- 有动作条件 vs 无动作条件
+---
 
-在此框架下，对不同类型的模型用匹配的指标评测（不能用同一把尺子量所有模型）。
+### 核心框架：S0-S3 预测模型层级
 
-### 关键发现
-- 不同类型模型的"最优评测指标"是不同的，混用指标会产生误导性结论
-- 现有 benchmark 普遍存在"类型不分"的问题
+> *"From lower to higher stages, the models are capable of generating: **text, images, videos, and actionable videos**"*
 
-### 🔑 我们的 Insight
-WorldSimBench 提醒我们：VBVR-2.0 的评测设计需要考虑**被测模型的类型**。Image-to-Video 模型和 Text-to-Video 模型对同一任务的输入形式不同，应该有对应的 task 设计。VBVR-1.0 的 I2V 框架（first frame → video → answer）本身是一个好的选择，因为它统一了输入形式。
+| 层级 | 模型类型 | 输出 | 评测方式 |
+|------|---------|------|---------|
+| **S0** | Predictive Text Model（LLM） | 文本规划 | 任务完成率 |
+| **S1** | Predictive Image Model | 目标图像 | 美学质量（FID等） |
+| **S2** | Predictive Video Model | 视频 | 美学质量（FVD等） |
+| **S3** | **World Simulator** | **可执行动作的视频** | **WorldSimBench（本文）** |
+
+S3 的关键：集成了**3D 场景理解 + 物理规律先验**，生成的视频可以被翻译成可执行的控制信号。
+
+---
+
+### 双评测框架
+
+**评测 1：Explicit Perceptual Evaluation（显式感知评测）**
+- 测什么：视觉保真度（visual fidelity）—— 生成视频是否符合人类对物理属性的感知偏好
+- 怎么测：HF-Embodied Dataset（**35,701 条**，**20 个维度**的人工反馈）→ 训练 Human Preference Evaluator
+- Human Preference Evaluator **全面超越 GPT-4o**（GPT-4o 在零样本下甚至出现负相关）
+
+**评测 2：Implicit Manipulative Evaluation（隐式操控评测）**
+- 测什么：视频-动作一致性（video-action consistency）—— 生成的视频能否被正确翻译成控制信号
+- 怎么测：在 3 个仿真环境中，把生成视频输入 video-to-action 模型，看执行成功率
+- 关键性质：**有可验证的 GT**（仿真环境中动作结果确定）
+
+**三大具身场景：**
+- **OE**（Open-Ended Embodied / Minecraft）：开放世界
+- **AD**（Autonomous Driving / CARLA）：自动驾驶
+- **RM**（Robot Manipulation / CALVIN）：机器人操控
+
+---
+
+### 关键发现（§5）
+
+**发现 1：现有评测方法对 S3 完全不适用**
+> *"conventional evaluation methods are inadequate for assessing the actionability of the generated videos, as there is **no definite ground truth** for actionable videos towards completing a specific embodied task"*
+
+这正是 WorldSimBench 提出的动机：S2 级别的 FVD 对 S3 无效。
+
+**发现 2：Human Preference Evaluator 必要性**
+> *"GPT-4o exhibits a **negative correlation** with human preferences in evaluating OpenSora in AD under zero-shot setting"*
+
+GPT-4o 零样本下判断视频质量与人类判断负相关——自动评测器的质量至关重要。
+
+**发现 3：多数模型在具身交互维度严重不足**
+> *"most models struggle with Embodied Intelligence tasks"*
+
+即使是当时最好的模型，在具身场景的真实任务执行中表现都很差。
+
+---
+
+### 自身局限（论文明确承认）
+
+> *"the World Simulator can be applied to **more scenarios than just robots**, and different scenarios have more physical representations, so how to effectively evaluate the World Simulator in **other scenarios** requires more exploration."*
+
+只覆盖了 3 个具身场景（Minecraft/CARLA/CALVIN），没有覆盖通用场景。
+
+---
+
+### 🔑 我们的 Insight（精读后）
+
+**Insight 1：S0-S3 层级是 VBVR 定位的绝佳参照系**
+VBVR-1.0 在 S2 和 S3 之间——它用 S2（视频生成）测的是接近 S3 的能力（action understanding via reasoning）。VBVR-2.0 的反事实/因果推理任务，本质上是在测 S3 所需的"物理规律先验理解"，这是最清晰的定位方式。
+
+**Insight 2：Implicit Manipulative Evaluation 的思路对 VBVR-2.0 的启发**
+WorldSimBench 用"生成视频 → 翻译成动作 → 执行成功率"来隐式评测视频质量。VBVR 用"生成视频 → 推理问题 → 正确率"是类似思路，但不需要仿真环境——更轻量，但同样是 implicit evaluation（推理题的正确率隐式测视频的世界模型质量）。
+
+**Insight 3：GPT-4o 作为评测器的负相关发现**
+GPT-4o 在零样本下评测视频质量出现负相关——说明 LLM-as-judge 在视频世界模型评测中极不可靠。VBVR 的程序化 GT 完全绕开了这个问题，这是又一个根本优势。
+
+**Insight 4：局限性 = VBVR 的机会**
+WorldSimBench 承认只覆盖了 Minecraft/CARLA/CALVIN 三个固定场景。VBVR 的程序化引擎是通用的——不绑定特定场景，可以覆盖任意物理推理场景。这是 scalability 上的根本差异。
+
+**Insight 5：35,701 条多维人工反馈 vs VBVR 程序化 GT**
+WorldSimBench 构建数据集需要 35,701 条人工打分。VBVR 的程序化引擎理论上可以生成无限条零成本 GT。这在 VBVR-2.0 paper 中值得直接对比。
 
 ---
 
